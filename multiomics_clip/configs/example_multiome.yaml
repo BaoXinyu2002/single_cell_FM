@@ -1,0 +1,42 @@
+# Example configuration for training on 10x Multiome data
+
+# Model paths (update these to your actual paths)
+rna_encoder_path: "scFoundation/model/models/models.ckpt"
+atac_encoder_path: "EpiAgent/model/EpiAgent/EpiAgent.pth"
+
+# Architecture
+projection_dim: 512  # Larger projection dimension for better performance
+temperature: 0.07
+freeze_encoders: true  # Freeze encoders for faster training
+
+# Training hyperparameters
+batch_size: 32  # Smaller batch size for memory constraints
+learning_rate: 0.0001  # 1e-4, higher LR for projection heads only
+encoder_lr_multiplier: 0.1
+warmup_steps: 5000
+num_steps: 50000  # Shorter training for example
+weight_decay: 0.01
+grad_clip_norm: 1.0
+
+# Data configuration
+max_atac_length: 8192
+target_resolution: 4.0
+gene_list_path: "scFoundation/model/OS_scRNA_gene_index.19264.tsv"
+ccre_bed_path: "EpiAgent/data/cCRE.bed"
+
+# Logging and checkpointing
+log_steps: 50
+save_steps: 2500
+eval_steps: 500
+save_dir: "./multiome_checkpoints"
+wandb_project: "multiome-clip"
+wandb_run_name: "multiome-freeze-encoders"
+use_wandb: true
+
+# Device
+device: "cuda"
+mixed_precision: true
+
+# Evaluation
+eval_batch_size: 64
+retrieval_k_values: [1, 5, 10, 20, 50]

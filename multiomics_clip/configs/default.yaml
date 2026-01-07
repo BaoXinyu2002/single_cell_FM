@@ -1,0 +1,56 @@
+# Default configuration for Multi-Omics CLIP training
+
+# Model paths
+rna_encoder_path: "scFoundation/model/models/models.ckpt"
+atac_encoder_path: "EpiAgent/model/EpiAgent/EpiAgent.pth"
+
+# Architecture
+projection_dim: 256
+temperature: 0.07
+freeze_encoders: true
+freeze_rna_encoder: false
+freeze_atac_encoder: false
+
+# Training hyperparameters
+batch_size: 64
+learning_rate: 0.00005  # 5e-5
+encoder_lr_multiplier: 0.1
+warmup_steps: 10000
+num_steps: 100000
+weight_decay: 0.01
+grad_clip_norm: 1.0
+accumulation_steps: 1
+
+# Optimizer
+adam_beta1: 0.9
+adam_beta2: 0.98
+adam_epsilon: 0.000001  # 1e-6
+
+# Data configuration
+max_atac_length: 8192
+target_resolution: 4.0
+gene_list_path: "scFoundation/model/OS_scRNA_gene_index.19264.tsv"
+ccre_bed_path: "EpiAgent/data/cCRE.bed"
+
+# Logging and checkpointing
+log_steps: 100
+save_steps: 5000
+eval_steps: 1000
+save_dir: "./checkpoints"
+wandb_project: "multiomics-clip"
+wandb_entity: null
+wandb_run_name: null
+use_wandb: true
+
+# Distributed training
+distributed: false
+local_rank: -1
+world_size: 1
+
+# Device
+device: "cuda"
+mixed_precision: true
+
+# Evaluation
+eval_batch_size: 128
+retrieval_k_values: [1, 5, 10, 50]

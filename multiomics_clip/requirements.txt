@@ -1,0 +1,148 @@
+# Multi-Omics CLIP Requirements
+# This project integrates scFoundation (scRNA-seq) and EpiAgent (scATAC-seq)
+# Python version: 3.11 recommended (minimum 3.10 for type hints, EpiAgent tested on 3.11)
+
+# COMPATIBILITY NOTES:
+# - PyTorch 2.0.1: Satisfies EpiAgent (>=2.0.0) and scFoundation requirements
+# - NumPy <2.0.0: CRITICAL - faiss cannot work with NumPy 2.x (C API breaking changes)
+# - flash-attn 2.5.8: Satisfies EpiAgent (>=2.5.7), required for BERT with FlashAttention v2
+# - local-attention 1.9.14: CRITICAL - versions >=1.9.15 incompatible with torch 2.0.1
+# - transformers 4.27-4.35: Tested compatibility range with torch 2.0.1
+# - einops >=0.6.1: Required for torch.compile support in PyTorch 2.0+
+# - pybedtools >=0.10.0: Python 3.11+ support requires 0.10.0+
+# - CUDA 11.7 recommended for optimal performance with PyTorch 2.0.1 and flash-attn 2.5.8
+
+# Installation Notes:
+# IMPORTANT: Follow this exact order to avoid conflicts!
+#
+# 1. Create Python 3.11 environment:
+#    conda create -n sclip python=3.11
+#    conda activate sclip
+#
+# 2. Verify ninja is working (required for flash-attn compilation):
+#    ninja --version
+#    # If ninja fails or returns nonzero exit code, reinstall:
+#    pip uninstall -y ninja && pip install ninja
+#
+# 3. Install PyTorch first with CUDA 11.7:
+#    pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu117
+#
+# 4. Install torch-geometric extensions (BEFORE requirements.txt):
+#    pip install torch-scatter torch-sparse torch-cluster torch-spline-conv \
+#      -f https://data.pyg.org/whl/torch-2.0.1+cu117.html
+#    # This installs CUDA-specific compiled wheels for torch-geometric
+#
+# 5. Install flash-attn (MUST be after PyTorch):
+#    pip install flash-attn==2.5.8 --no-build-isolation
+#
+# 6. Install remaining dependencies:
+#    pip install -r requirements.txt
+#
+# 7. Install EpiAgent package (if not already installed):
+#    pip install epiagent
+#
+# 8. Verify installation (see VALIDATION section at end of file)
+
+# Core dependencies (compatible with both scFoundation and EpiAgent)
+torch==2.0.1  # Satisfies EpiAgent (>=2.0.0) and scFoundation
+numpy>=1.20.0,<2.0.0  # CRITICAL: faiss incompatible with NumPy 2.x
+pandas>=1.5.0,<3.0.0
+scipy>=1.10.0,<2.0.0
+
+# Single-cell analysis
+scanpy>=1.9.0,<1.11.0
+anndata>=0.8.0,<0.11.0
+
+# Deep learning utilities
+einops>=0.6.1  # Required by scFoundation; 0.6.1+ needed for torch 2.0 compatibility
+flash-attn==2.5.8  # Required by EpiAgent (>=2.5.7), MUST install after PyTorch
+local-attention==1.9.14  # Required by scFoundation (for Performer) - CRITICAL: 1.9.15+ incompatible with torch 2.0.1
+
+# Bioinformatics
+pybedtools>=0.10.0  # Python 3.11+ support requires 0.10.0+
+
+# Machine learning
+scikit-learn>=1.0.0,<2.0.0
+
+# Data processing
+h5py>=3.0.0,<4.0.0
+tables>=3.7.0,<4.0.0  # Optional - scanpy primarily uses h5py now
+
+# Visualization (optional)
+matplotlib>=3.5.0,<4.0.0
+seaborn>=0.11.0,<1.0.0
+
+# Logging and experiment tracking
+wandb>=0.15.0,<1.0.0  # Verified torch 2.0.1 compatibility
+tqdm>=4.60.0
+
+# Configuration
+pyyaml>=6.0,<7.0
+
+# Note: Distributed training support (torch.distributed) is included with PyTorch >= 2.0
+
+# Transformers (for EpiAgent)
+transformers>=4.27.0,<4.36.0  # Tested compatibility range with torch 2.0.1
+
+# Graph neural networks (for EpiAgent)
+# NOTE: torch-geometric requires extension packages that must be installed separately
+# See installation step 4 above for torch-scatter, torch-sparse, torch-cluster, torch-spline-conv
+torch-geometric>=2.3.0
+
+# Optimal transport and similarity search (for EpiAgent)
+POT>=0.9.2,<1.0.0  # Python Optimal Transport with PyTorch backend support
+faiss-cpu>=1.7.4,<1.9.0  # For CPU only; use faiss-gpu-cu11>=1.7.4 for CUDA 11.7
+
+# Additional utilities
+jupyterlab>=3.0.0,<5.0.0  # For demo notebooks
+ipykernel>=6.0.0,<7.0.0  # For running notebooks
+
+# ==============================================================================
+# INSTALLATION VALIDATION
+# ==============================================================================
+# After installation, verify everything works by running these commands:
+#
+# 1. Check Python version:
+#    python --version  # Should be 3.11.x
+#
+# 2. Check PyTorch and CUDA:
+#    python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA version: {torch.version.cuda if torch.cuda.is_available() else \"N/A\"}')"
+#    # Expected output:
+#    #   PyTorch: 2.0.1+cu117
+#    #   CUDA available: True
+#    #   CUDA version: 11.7
+#
+# 3. Check NumPy version (CRITICAL):
+#    python -c "import numpy; print(f'NumPy: {numpy.__version__}'); assert numpy.__version__.startswith('1.'), 'NumPy 2.x incompatible with faiss!'"
+#    # Expected output: NumPy: 1.x.x (must be < 2.0.0)
+#
+# 4. Check torch-geometric and extensions:
+#    python -c "import torch_geometric; import torch_scatter; import torch_sparse; import torch_cluster; print('torch-geometric extensions: OK')"
+#
+# 5. Check flash-attn:
+#    python -c "import flash_attn; print(f'flash-attn: {flash_attn.__version__}')"
+#    # Expected output: flash-attn: 2.5.8
+#
+# 6. Check local-attention (CRITICAL):
+#    python -c "import local_attention; print(f'local-attention: {local_attention.__version__}'); assert local_attention.__version__ == '1.9.14', 'Must be 1.9.14!'"
+#    # Expected output: local-attention: 1.9.14
+#    # Note: Versions >=1.9.15 are incompatible with torch 2.0.1
+#
+# 7. Check transformers version:
+#    python -c "import transformers; print(f'transformers: {transformers.__version__}')"
+#    # Expected output: transformers: 4.27.x - 4.35.x
+#
+# 8. Check einops version:
+#    python -c "import einops; print(f'einops: {einops.__version__}')"
+#    # Expected output: einops: >= 0.6.1
+#
+# 9. Check scFoundation model loading:
+#    python -c "import sys; sys.path.insert(0, './scFoundation/model'); from load import load_model_frommmf; print('scFoundation load module: OK')"
+#
+# 10. Check EpiAgent:
+#    python -c "from epiagent.model import EpiAgent; from torch_geometric.nn import SGConv; print('EpiAgent: OK')"
+#
+# 11. Check faiss:
+#    python -c "import faiss; print(f'faiss: OK')"
+#
+# If all checks pass, your environment is correctly set up!
