@@ -1,0 +1,9 @@
+# Tested with Python 3.10, torch 2.9.1 (CUDA 12.8 build), numpy 1.26.4, scipy 1.15.3, pandas 2.3.3,
+# anndata 0.11.4, scanpy 1.11.5, h5py 3.16.0.
+torch>=2.1          # SDPA attention + mmap checkpoint loading; no flash-attn needed
+numpy>=1.24,<2.0    # numpy 2 may break ties differently when sorting cCREs into the EpiAgent sentence
+scipy>=1.10
+pandas>=2.0
+anndata>=0.10
+scanpy>=1.10        # 10x .h5 reading, QC, normalisation
+h5py>=3.8

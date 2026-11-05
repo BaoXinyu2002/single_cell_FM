@@ -1,0 +1,10 @@
+name: mutual
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - -r requirements.txt
+# GPU: install the torch wheel that matches your CUDA driver first, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
