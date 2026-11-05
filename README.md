@@ -8,11 +8,11 @@ It was trained on 3,009,609 paired 10x Multiome cells (400 dataset entries, 385 
 human, hg38).
 
 This repository holds the model code, the inference pipeline from raw 10x Multiome files, a runnable example with
-data, and a fidelity check. **The checkpoint is not in the repository** (see [Model files](#1-model-files)).
+data, and a fidelity check. **The model weights are not in the repository** (see [Model files](#1-model-files)).
 
 | | |
 |---|---|
-| Model files | trained heads (3 seeds) + fitted PCA/LSI + feature panels: the checkpoint bundle; architecture code: `mutual/` |
+| Model files | trained heads (3 seeds) + fitted PCA/LSI + feature panels: `MUTUAL_model.tar.gz`; architecture code: `mutual/` |
 | Sample programs | `examples/run_example.py` (Python API walk-through), `scripts/mutual_embed.py` (command line) |
 | Example data | `examples/data/`: 104 cells of a public normal-breast Multiome library, raw RNA counts + ATAC fragments |
 | Expected output | `examples/expected_metrics.json`; formats in [Expected output](#5-expected-output) |
@@ -22,36 +22,43 @@ data, and a fidelity check. **The checkpoint is not in the repository** (see [Mo
 
 ## 1. Model files
 
-### Checkpoint bundle (not in this repository)
+### MUTUAL weights (not in this repository)
 
-`MUTUAL_LMO_XCAT_step400k/`, 339 MB plus the reference files below. Lab members can read it on Turbo:
-`/nfs/turbo/umms-drjieliu1/usr/xinyubao/sclip/checkpoints/MUTUAL_LMO_XCAT_step400k`. A public download link will be added
-here.
+`MUTUAL_model.tar.gz`: 255 MB packed, 312 MB unpacked, md5 `ca3282cfce1f2e480e234c796db07719`. A public download link
+will be added here. Lab members can copy it from Turbo: `/nfs/turbo/umms-drjieliu1/usr/xinyubao/MUTUAL_model.tar.gz`.
+
+```bash
+tar -xzf MUTUAL_model.tar.gz                  # -> MUTUAL_model/
+(cd MUTUAL_model && md5sum -c MD5SUMS)
+```
 
 ```
-MUTUAL_LMO_XCAT_step400k/
+MUTUAL_model/                   pass this folder as MODEL_DIR / model_dir
   seed1/ seed2/ seed3/          one trained model per training seed (the paper reports all three)
-    step_400000.pt              trained heads: {config, knobs, state, step}; 6,226,099 parameters (fp16)
-    buffers.pt, config.json, convergence.json, summary_0000000.json   training records (not needed for inference)
+    step_400000.pt              trained heads: {step, knobs, state, config}; 6,226,099 parameters (fp16)
   fit/model.npz                 corpus-fitted linear summaries: RNA PCA-256 (V_rna, rna_mu/sd/mz), ATAC LSI-256
-                                (atac_feats, atac_idf, V_atac); fit.json, nf_store.json = fit records
+                                (atac_feats, atac_idf, V_atac)
   raw/selection.npz             raw-view panels: 4,000 HVGs (columns of the 19,264-gene list), 10,000 cCREs (+ idf)
   reference/                    OS_scRNA_gene_index.19264.tsv (scFoundation gene list), cCRE.bed and
                                 cCRE_document_frequency.npy (EpiAgent cCREs, hg38)
-  foundation/                   models1.ckpt (scFoundation), pretrained_EpiAgent.pth (EpiAgent); links on Turbo
-  scripts/                      snapshot of the training-time code, for reference
-  MD5SUMS, README.md
+  foundation/                   empty: put the two foundation-model checkpoints here (see below)
+  README.md, MD5SUMS
 ```
 
 ### Frozen foundation models (download from their authors)
 
+MUTUAL does not redistribute the foundation-model weights. Download them from the original releases:
+
 | model | file | source | sha256 |
 |---|---|---|---|
-| scFoundation | `models1.ckpt` (key `gene`, 1.43 GB) | scFoundation release (github.com/biomap-research/scFoundation; SharePoint link in its README) | `9f40bf324d3d0084...` |
-| EpiAgent | `pretrained_EpiAgent.pth` (5.8 GB) | EpiAgent release (Google Drive link in its README) | `7fffb9225c3b4b33...` |
+| scFoundation | `models1.ckpt` (key `gene`, 1,432,587,886 bytes) | [biomap-research/scFoundation](https://github.com/biomap-research/scFoundation) (SharePoint link in its README) | `9f40bf324d3d0084c4b288d06f5af4fddd12206e2a3f022551d12e89e33a0ea9` |
+| EpiAgent | `pretrained_EpiAgent.pth` (5,801,822,387 bytes) | [xy-chen16/EpiAgent](https://github.com/xy-chen16/EpiAgent) (Google Drive link in its README) | `7fffb9225c3b4b33d005c250c2b8d5990635221397ddf1a1d1004ae117a0a645` |
 
-Put them in `MODEL_DIR/foundation/` or pass `--scf_ckpt` / `--epiagent_ckpt`. Only the encoders are used (scFoundation
-99.9 M parameters, EpiAgent 754.9 M); the decoders in the checkpoint files are ignored.
+Check a download with `sha256sum models1.ckpt pretrained_EpiAgent.pth`. Put both files in `MUTUAL_model/foundation/`
+under these names; every script then finds them. Alternatively, pass their paths: `scf_ckpt=` / `epiagent_ckpt=` in
+`MUTUAL.from_pretrained`, or `--scf_ckpt` / `--epiagent_ckpt` for `scripts/mutual_embed.py` and
+`examples/run_example.py`. Only the encoders are used (scFoundation 99.9 M parameters, EpiAgent 754.9 M); the decoders
+in the checkpoint files are ignored. Their use follows the scFoundation and EpiAgent licences.
 
 ### Architecture (code: `mutual/`)
 
@@ -87,7 +94,8 @@ import numpy as np
 from mutual import MUTUAL, cross_modal_metrics
 from mutual import preprocess as P
 
-model = MUTUAL.from_pretrained("MUTUAL_LMO_XCAT_step400k", seed=1, device="cuda")   # or "cpu"
+model = MUTUAL.from_pretrained("MUTUAL_model", seed=1, device="cuda")   # or "cpu"
+# foundation models elsewhere: add scf_ckpt="/path/models1.ckpt", epiagent_ckpt="/path/pretrained_EpiAgent.pth"
 
 rna = P.read_rna("filtered_feature_bc_matrix.h5")                     # 10x .h5 or .h5ad of raw counts
 barcodes, X, _ = P.rna_log1p(rna, P.load_gene_list(model.paths["gene_list"]))
@@ -103,15 +111,15 @@ print(cross_modal_metrics(z_rna, z_atac))
 **Command line** (any 10x Multiome sample, or one modality alone):
 
 ```bash
-python scripts/mutual_embed.py --model_dir MUTUAL_LMO_XCAT_step400k \
+python scripts/mutual_embed.py --model_dir MUTUAL_model \
     --rna filtered_feature_bc_matrix.h5 --atac_fragments atac_fragments.tsv.gz --out sample.npz
 python scripts/mutual_embed.py --model_dir ... --rna counts.h5ad --out rna_only.npz
 python scripts/mutual_embed.py --model_dir ... --atac_fragments fragments.tsv.gz --barcodes cells.txt --out atac_only.npz
 python scripts/mutual_embed.py --model_dir ... --atac_counts peaks.h5ad --out atac_only.npz     # cell x peak counts
 ```
 
-Options: `--seed {1,2,3}`, `--device {cuda,cpu}`, `--min_genes 500`, `--min_cells 3`, `--min_fragments 200` (training
-defaults).
+Options: `--seed {1,2,3}`, `--device {cuda,cpu}`, `--scf_ckpt`, `--epiagent_ckpt`, `--min_genes 500`, `--min_cells 3`,
+`--min_fragments 200` (training defaults).
 
 ---
 
@@ -156,8 +164,9 @@ per cell type (Adipocytes, Endothelial, Epithelial, Fibroblasts, Macrophages, T-
 git clone <this repo> && cd MUTUAL
 conda env create -f environment.yml && conda activate mutual      # or: pip install -r requirements.txt
 # GPU: install the torch build for your CUDA first, e.g. pip install torch --index-url https://download.pytorch.org/whl/cu128
-python examples/run_example.py --model_dir /path/to/MUTUAL_LMO_XCAT_step400k            # GPU if available
-python examples/run_example.py --model_dir /path/to/MUTUAL_LMO_XCAT_step400k --device cpu
+tar -xzf MUTUAL_model.tar.gz            # weights, see Model files; then put the two foundation models in MUTUAL_model/foundation/
+python examples/run_example.py --model_dir MUTUAL_model                 # GPU if available
+python examples/run_example.py --model_dir MUTUAL_model --device cpu
 ```
 
 Tested with Python 3.10, torch 2.9.1 (CUDA 12.8), numpy 1.26.4, scipy 1.15.3, pandas 2.3.3, anndata 0.11.4,
@@ -233,4 +242,5 @@ Preprocessing reproduces the training inputs exactly:
 - Embeddings of different samples share one space with no batch correction. The paper's benchmarks report each
   metric twice: on the raw embeddings, and after donor centring (each donor's mean embedding subtracted).
 - `mutual/foundation.py` re-implements the scFoundation and EpiAgent encoders so their released weights load without
-  their packages. The weights are not redistributed here; their use follows the scFoundation and EpiAgent licences.
+  their packages. Their weights are not redistributed here or in `MUTUAL_model.tar.gz`; their use follows the
+  scFoundation and EpiAgent licences.

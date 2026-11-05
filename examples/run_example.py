@@ -3,7 +3,8 @@
 Data: 104 annotated cells of a normal-breast 10x Multiome sample (examples/data/, public GEO GSE244594: GSM7821209 / GSM7821193;
 breast was not in MUTUAL's training corpus). 6 cell types, 5 donors.
 
-  python examples/run_example.py --model_dir /path/to/MUTUAL_LMO_XCAT_step400k [--device cuda|cpu] [--seed 1]
+  python examples/run_example.py --model_dir /path/to/MUTUAL_model [--device cuda|cpu] [--seed 1]
+      [--scf_ckpt models1.ckpt] [--epiagent_ckpt pretrained_EpiAgent.pth]   (default: MODEL_DIR/foundation/)
 
 Writes examples/output/{embeddings.npz, metrics.json} and checks the metrics against examples/expected_metrics.json.
 """
@@ -27,12 +28,15 @@ def main():
     ap.add_argument("--model_dir", required=True)
     ap.add_argument("--device", default="cuda" if __import__("torch").cuda.is_available() else "cpu")
     ap.add_argument("--seed", type=int, default=1, choices=(1, 2, 3))
+    ap.add_argument("--scf_ckpt", default=None, help="scFoundation models1.ckpt (default MODEL_DIR/foundation/)")
+    ap.add_argument("--epiagent_ckpt", default=None, help="pretrained_EpiAgent.pth (default MODEL_DIR/foundation/)")
     ap.add_argument("--out", default=os.path.join(HERE, "output"))
     a = ap.parse_args()
     t0 = time.time()
 
     # 1. load the model: frozen scFoundation + EpiAgent, corpus-fitted PCA / LSI, trained MUTUAL heads
-    model = MUTUAL.from_pretrained(a.model_dir, seed=a.seed, device=a.device)
+    model = MUTUAL.from_pretrained(a.model_dir, seed=a.seed, device=a.device, scf_ckpt=a.scf_ckpt,
+                                   epiagent_ckpt=a.epiagent_ckpt)
 
     # 2. read and preprocess the inputs
     labels = pd.read_csv(f"{HERE}/data/breast_pool3_labels.csv").set_index("barcode")

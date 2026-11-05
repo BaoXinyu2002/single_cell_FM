@@ -1,7 +1,7 @@
 #!/bin/bash
 # Full public sample: download one normal-breast 10x Multiome library from GEO (GSE244594; 21.7 MB RNA .h5 +
 # 802 MB ATAC fragments) and embed every cell with MUTUAL through the command-line tool.
-#   bash examples/run_full_sample.sh /path/to/MUTUAL_LMO_XCAT_step400k [workdir]
+#   bash examples/run_full_sample.sh /path/to/MUTUAL_model [workdir]
 set -euo pipefail
 MODEL_DIR=${1:?usage: run_full_sample.sh MODEL_DIR [WORKDIR]}
 WORK=${2:-breast_pool3}

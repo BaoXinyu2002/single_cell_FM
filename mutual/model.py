@@ -1,7 +1,7 @@
 """MUTUAL end to end: preprocessed cells -> 256-d embeddings in the shared RNA / ATAC space.
 
     from mutual import MUTUAL
-    m = MUTUAL.from_pretrained("/path/to/MUTUAL_LMO_XCAT_step400k", seed=1, device="cuda")
+    m = MUTUAL.from_pretrained("/path/to/MUTUAL_model", seed=1, device="cuda")
     z_rna  = m.embed_rna(X_log1p)        # X_log1p: log1p(CP10k) rows over the 19,264 scFoundation genes
     z_atac = m.embed_atac(sentences)     # sentences: EpiAgent token-id arrays, highest TF-IDF first
 
